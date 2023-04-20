@@ -35,6 +35,7 @@ pub struct Orientation {
     pub start_angle: f64,
 }
 
+#[derive(Debug)]
 pub struct Layout {
     orientation: Orientation,
     size: Point,
