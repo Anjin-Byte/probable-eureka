@@ -9,7 +9,6 @@ use std::{path::Path};
 use std::fs::File;
 use std::io::{BufWriter, Read, Cursor};
 
-
 fn raw_image_to_normal(file_path: &Path, width: usize, height: usize) -> Result<Vec<Vec<f64>>, Box<dyn std::error::Error>> {
     let mut file = File::open(file_path)?;
     let mut buffer = Vec::new();
@@ -31,7 +30,7 @@ fn raw_image_to_normal(file_path: &Path, width: usize, height: usize) -> Result<
 }
 
 fn write_normal_to_png(normal: Vec<Vec<f64>>, width: usize, height: usize) -> Result<(), png::EncodingError> {
-    let file = File::create("output.png")?;
+    let file = File::create("Thermal.png")?;
     let write = BufWriter::new(file);
     let mut encoder = Encoder::new(write, width as u32, height as u32);
     encoder.set_color(ColorType::Grayscale);
@@ -63,7 +62,7 @@ fn hex_tessellation_kernal(field: Vec<Vec<f64>>, layout: Layout, hex_dim: usize)
 }
 
 fn main() {
-    let input_path = Path::new("/Users/thales/Documents/probable-eureka/Combine.raw");
+    let input_path = Path::new("/Users/thales/Documents/probable-eureka/Thermal.r16");
     let output_path = input_path.with_extension("png");
 
     let img_dim: usize = 4096;
