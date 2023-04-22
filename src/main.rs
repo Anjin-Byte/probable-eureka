@@ -5,7 +5,7 @@ use hex_util::{Layout, Point};
 use png::{BitDepth, ColorType, Encoder};
 use byteorder::{LittleEndian, ReadBytesExt};
 
-use std::{path::Path};
+use std::path::Path;
 use std::fs::File;
 use std::io::{BufWriter, Read, Cursor};
 
