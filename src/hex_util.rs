@@ -22,6 +22,50 @@ impl Point {
     }
 }
 
+impl Add for Point {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl Mul<f64> for Point {
+    type Output = Point;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Self {
+            x: self.x * rhs,
+            y: self.y * rhs,
+        }
+    }
+}
+
+impl Div for Point {
+    type Output = Point;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x / rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl Div<f64> for Point {
+    type Output = Point;
+
+    fn div(self, rhs: f64) -> Self::Output {
+        Self {
+            x: self.x / rhs,
+            y: self.y / rhs,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct Orientation {
     pub f0: f64,
@@ -112,6 +156,8 @@ pub enum Direction {
     NorthWest,
 }
 
+// I need axial coords to be whole numbers in 
+// order to be properly hashable for look-up
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct Hex {
     pub q: f64,
