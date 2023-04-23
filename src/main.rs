@@ -22,7 +22,7 @@ fn raw_image_to_normal(
     let mut cursor = Cursor::new(buffer);
     let mut normal_image = vec![vec![0.0_f64; height]; width];
 
-    //println!("reading .raw file...");
+    println!("reading .raw file...");
     for y in 0..height {
         for x in 0..width {
             let pixel_value = cursor.read_u16::<LittleEndian>()?;
@@ -50,7 +50,7 @@ fn write_normal_to_png(
     let buf_size = (width) * (height) * 2;
     let mut buf = vec![0_u8; buf_size];
 
-    //println!("loading into buffer...");
+    println!("loading into buffer...");
     for y in 0..height {
         for x in 0..width {
             let index = (y * width + x) * 2;
@@ -61,31 +61,32 @@ fn write_normal_to_png(
         }
     }
 
-    //println!("writing image data...");
+    println!("writing image data...");
     writer.write_image_data(&buf)?;
     Ok(())
 }
 
-fn hex_tessellation_kernal(field: Vec<Vec<f64>>, layout: Layout) -> Vec<Vec<f64>> {
-    let mut map: HashMap<Hex, f64> = HashMap::new();
-    //println!("layout: {:?} | hex_dim: {}", layout, hex_dim);
-    let dim = 4096_f64 / &layout.size.x * 2_f64;
-    let left = -100;
-    let right = dim as i32;
-    let top = 0;
-    let bottom = dim as i32;
+fn hex_kernel(field: Vec<Vec<f64>>, layout: Layout) -> Vec<Vec<f64>> {
+    println!("kernel start...");
+    let mut bin: HashMap<Hex, f64> = HashMap::new();
+    let mut hex_field: Vec<Vec<f64>> = vec![vec![0.0; field[0].len()]; field.len()];
 
-    //println!("starting...");
+    let dimm = (field.len()as f64 / (&layout.size.x *  2.0)) as i32;
+    let left = 0;
+    let right = dimm;
+    let top = 5;
+    let bottom = dimm;
+
     for q in left..right {
         let q_offset = q / 2 as i32;
         for r in (top - q_offset)..(bottom - q_offset) {
-            map.insert(Hex::new(q, r), 0_f64);
+            bin.insert(Hex::new(q, r), 0_f64);
         }
     }
 
-    //println!("binning...");
-    for (x, v) in field.iter().enumerate() {
-        for (y, n) in v.iter().enumerate() {
+    println!("binning...");
+    field.iter().enumerate().for_each(|(x, v)| {
+        v.iter().enumerate().for_each(|(y, n)| {
             let hex = Hex::from(Hex::from_point(
                 &layout,
                 &Point {
@@ -93,20 +94,21 @@ fn hex_tessellation_kernal(field: Vec<Vec<f64>>, layout: Layout) -> Vec<Vec<f64>
                     y: y as f64,
                 },
             ));
-            if let Some(value) = map.get_mut(&hex) {
-                *value += n;
+            match bin.get_mut(&hex) {
+                Some(value) => {
+                    *value += n;
+                }
+                None => ()
             }
-        }
-    }
-
+        });
+    });
 
     const SQRT_3: f64 = 1.73205080756888;
     let area = (3_f64 * SQRT_3 * (&layout.size.x * &layout.size.x)) / 2_f64;
-    let mut copy_field = field.clone(); 
 
-    //println!("painting...");
-    for (x, v) in field .iter().enumerate() {
-        for (y, _) in v.iter().enumerate() {
+    println!("painting...");
+    field.iter().enumerate().for_each(|(x, v)| {
+        v.iter().enumerate().for_each(|(y, _)| {
             let hex = Hex::from(Hex::from_point(
                 &layout,
                 &Point {
@@ -114,20 +116,23 @@ fn hex_tessellation_kernal(field: Vec<Vec<f64>>, layout: Layout) -> Vec<Vec<f64>
                     y: y as f64,
                 },
             ));
-            if let Some(value) = map.get_mut(&hex) {
-                copy_field[x][y] = *value / area;
+            match bin.get(&hex) {
+                Some(value) => {
+                    hex_field[x][y] = value / area;
+                }
+                None => (),
             }
-        }
-    }
-    //println!("finished...");
-    copy_field
+        });
+    });
+
+    hex_field
 }
 
 fn main() {
     let input_path = Path::new("in/FractalTerraces.r16");
 
     let img_dim: usize = 4096;
-    let hex_dim: usize = 50;
+    let hex_dim: usize = 120;
 
     let field = match raw_image_to_normal(input_path, img_dim, img_dim) {
         Ok(image) => image,
@@ -143,9 +148,11 @@ fn main() {
     };
 
     let origin = Point { x: 0.0, y: 0.0 };
-
     let layout = Layout::new(size, origin);
-    let tes_field = hex_tessellation_kernal(field, layout);
+
+    let start_time = std::time::Instant::now();
+    let tes_field = hex_kernel(field, layout);
+    println!("kernel time: {:?}", start_time.elapsed());
 
     let output_path = Path::new("out").join(
         input_path
