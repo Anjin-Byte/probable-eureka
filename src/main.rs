@@ -65,14 +65,14 @@ fn write_normal_to_png(
     Ok(())
 }
 
-fn hex_tessellation_kernal(field: Vec<Vec<f64>>, layout: Layout, hex_dim: usize) -> Vec<Vec<f64>> {
+fn hex_tessellation_kernal(field: Vec<Vec<f64>>, layout: Layout) -> Vec<Vec<f64>> {
     //println!("layout: {:?} | hex_dim: {}", layout, hex_dim);
     println!("starting");
     let mut new_field = field.clone(); // Create a mutable copy of field
     for (x, v) in field.iter().enumerate() {
-        for (y, n) in v.iter().enumerate() {
+        for (y, _) in v.iter().enumerate() {
             let hex =  Hex::from_point(&layout, &Point { x: x as f64, y: y as f64});
-            if hex.q > 10.0 && hex.r > 10.0 {
+            if hex.q > 10.0 && hex.r <  120.0 {
                 new_field[x][y] = 1.0; // Modify new_field instead of n
             }
         }
@@ -86,7 +86,7 @@ fn main() {
     let input_path = Path::new("in/Thermal.r16");
 
     let img_dim: usize = 4096;
-    let hex_dim: usize = 200;
+    let hex_dim: usize = 20;
 
     let field = match raw_image_to_normal(input_path, img_dim, img_dim) {
         Ok(image) => image,
@@ -104,7 +104,7 @@ fn main() {
     let origin = Point { x: 0.0, y: 0.0 };
 
     let layout = Layout::new(size, origin);
-    let tes_field = hex_tessellation_kernal(field, layout, hex_dim);
+    let tes_field = hex_tessellation_kernal(field, layout);
 
     let output_path = Path::new("out").join(
         input_path
