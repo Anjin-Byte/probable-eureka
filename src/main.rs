@@ -71,8 +71,10 @@ fn hex_tessellation_kernal(field: Vec<Vec<f64>>, layout: Layout) -> Vec<Vec<f64>
     let mut new_field = field.clone(); // Create a mutable copy of field
     for (x, v) in field.iter().enumerate() {
         for (y, _) in v.iter().enumerate() {
-            let hex =  Hex::from_point(&layout, &Point { x: x as f64, y: y as f64});
-            if hex.q > 10.0 && hex.r <  120.0 {
+            let hex = Hex::from(Hex::from_point(&layout, &Point { x: x as f64, y: y as f64}));
+            //println!("({}, {}, {})", hex.q, hex.r, hex.r);
+            if hex.q >= 0 && hex.r >= 0 {
+                //println!("({}, {})", x, y);
                 new_field[x][y] = 1.0; // Modify new_field instead of n
             }
         }
@@ -83,10 +85,10 @@ fn hex_tessellation_kernal(field: Vec<Vec<f64>>, layout: Layout) -> Vec<Vec<f64>
 
 
 fn main() {
-    let input_path = Path::new("in/Thermal.r16");
+    let input_path = Path::new("in/Mountain.raw");
 
     let img_dim: usize = 4096;
-    let hex_dim: usize = 20;
+    let hex_dim: usize = 100;
 
     let field = match raw_image_to_normal(input_path, img_dim, img_dim) {
         Ok(image) => image,
@@ -115,7 +117,7 @@ fn main() {
 
     let _ = match write_normal_to_png(&output_path, tes_field, img_dim, img_dim) {
         Ok(()) => {
-            println!("Hexagonal rastered image saved at: {:?}", output_path);
+            println!("image saved at: {:?}", output_path);
         }
         Err(e) => {
             println!("Error writing image file: {}", e);
