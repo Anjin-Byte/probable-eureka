@@ -109,7 +109,7 @@ const FLAT: Orientation = Orientation {
 #[derive(Debug)]
 pub struct Layout {
     orientation: Orientation,
-    size: Point,
+    pub size: Point,
     origin: Point,
 }
 

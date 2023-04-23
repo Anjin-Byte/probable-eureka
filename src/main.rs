@@ -1,5 +1,4 @@
 mod hex_util;
-//use hex_util::{Hex, Layout, Point};
 use hex_util::{Hex, Layout, Point};
 
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -8,6 +7,8 @@ use png::{BitDepth, ColorType, Encoder};
 use std::fs::File;
 use std::io::{BufWriter, Cursor, Read};
 use std::path::{Path, PathBuf};
+
+use std::collections::HashMap;
 
 fn raw_image_to_normal(
     file_path: &Path,
@@ -21,7 +22,7 @@ fn raw_image_to_normal(
     let mut cursor = Cursor::new(buffer);
     let mut normal_image = vec![vec![0.0_f64; height]; width];
 
-    println!("reading .raw file...");
+    //println!("reading .raw file...");
     for y in 0..height {
         for x in 0..width {
             let pixel_value = cursor.read_u16::<LittleEndian>()?;
@@ -49,7 +50,7 @@ fn write_normal_to_png(
     let buf_size = (width) * (height) * 2;
     let mut buf = vec![0_u8; buf_size];
 
-    println!("loading into buffer...");
+    //println!("loading into buffer...");
     for y in 0..height {
         for x in 0..width {
             let index = (y * width + x) * 2;
@@ -60,35 +61,73 @@ fn write_normal_to_png(
         }
     }
 
-    println!("writing image data...");
+    //println!("writing image data...");
     writer.write_image_data(&buf)?;
     Ok(())
 }
 
 fn hex_tessellation_kernal(field: Vec<Vec<f64>>, layout: Layout) -> Vec<Vec<f64>> {
+    let mut map: HashMap<Hex, f64> = HashMap::new();
     //println!("layout: {:?} | hex_dim: {}", layout, hex_dim);
-    println!("starting");
-    let mut new_field = field.clone(); // Create a mutable copy of field
+    let dim = 4096_f64 / &layout.size.x * 2_f64;
+    let left = -100;
+    let right = dim as i32;
+    let top = 0;
+    let bottom = dim as i32;
+
+    //println!("starting...");
+    for q in left..right {
+        let q_offset = q / 2 as i32;
+        for r in (top - q_offset)..(bottom - q_offset) {
+            map.insert(Hex::new(q, r), 0_f64);
+        }
+    }
+
+    //println!("binning...");
     for (x, v) in field.iter().enumerate() {
-        for (y, _) in v.iter().enumerate() {
-            let hex = Hex::from(Hex::from_point(&layout, &Point { x: x as f64, y: y as f64}));
-            //println!("({}, {}, {})", hex.q, hex.r, hex.r);
-            if hex.q >= 0 && hex.r >= 0 {
-                //println!("({}, {})", x, y);
-                new_field[x][y] = 1.0; // Modify new_field instead of n
+        for (y, n) in v.iter().enumerate() {
+            let hex = Hex::from(Hex::from_point(
+                &layout,
+                &Point {
+                    x: x as f64,
+                    y: y as f64,
+                },
+            ));
+            if let Some(value) = map.get_mut(&hex) {
+                *value += n;
             }
         }
     }
-    println!("stopping");
-    new_field // Return the modified field
+
+
+    const SQRT_3: f64 = 1.73205080756888;
+    let area = (3_f64 * SQRT_3 * (&layout.size.x * &layout.size.x)) / 2_f64;
+    let mut copy_field = field.clone(); 
+
+    //println!("painting...");
+    for (x, v) in field .iter().enumerate() {
+        for (y, _) in v.iter().enumerate() {
+            let hex = Hex::from(Hex::from_point(
+                &layout,
+                &Point {
+                    x: x as f64,
+                    y: y as f64,
+                },
+            ));
+            if let Some(value) = map.get_mut(&hex) {
+                copy_field[x][y] = *value / area;
+            }
+        }
+    }
+    //println!("finished...");
+    copy_field
 }
 
-
 fn main() {
-    let input_path = Path::new("in/Mountain.raw");
+    let input_path = Path::new("in/FractalTerraces.r16");
 
     let img_dim: usize = 4096;
-    let hex_dim: usize = 100;
+    let hex_dim: usize = 50;
 
     let field = match raw_image_to_normal(input_path, img_dim, img_dim) {
         Ok(image) => image,
