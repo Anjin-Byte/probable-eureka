@@ -116,7 +116,7 @@ pub struct Layout {
 impl Layout {
     pub fn new(size: Point, origin: Point) -> Self {
         Self {
-            orientation: POINTY,
+            orientation: FLAT,
             size,
             origin,
         }

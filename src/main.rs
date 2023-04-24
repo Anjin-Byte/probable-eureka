@@ -71,14 +71,20 @@ fn hex_kernel(field: Vec<Vec<f64>>, layout: Layout) -> Vec<Vec<f64>> {
     let mut bin: HashMap<Hex, f64> = HashMap::new();
     let mut hex_field: Vec<Vec<f64>> = vec![vec![0.0; field[0].len()]; field.len()];
 
-    let dimm = (field.len()as f64 / (&layout.size.x *  2.0)) as i32;
+    const SQRT_3: f64 = 1.73205080756888;
+    let size = &layout.size.x;
+    let area = (3_f64 * SQRT_3 * (size * size)) / 2_f64;
+
+    let height = (field.len() as f64 / (size * SQRT_3)) as i32;
+    let width = (field.len() as f64 / (size * 3_f64 / 2_f64)) as i32;
+
     let left = 0;
-    let right = dimm;
-    let top = 5;
-    let bottom = dimm;
+    let right = width;
+    let top = 1;
+    let bottom = height + 1;
 
     for q in left..right {
-        let q_offset = q / 2 as i32;
+        let q_offset = (q + 1) >> 1;
         for r in (top - q_offset)..(bottom - q_offset) {
             bin.insert(Hex::new(q, r), 0_f64);
         }
@@ -102,9 +108,6 @@ fn hex_kernel(field: Vec<Vec<f64>>, layout: Layout) -> Vec<Vec<f64>> {
             }
         });
     });
-
-    const SQRT_3: f64 = 1.73205080756888;
-    let area = (3_f64 * SQRT_3 * (&layout.size.x * &layout.size.x)) / 2_f64;
 
     println!("painting...");
     field.iter().enumerate().for_each(|(x, v)| {
@@ -132,7 +135,7 @@ fn main() {
     let input_path = Path::new("in/FractalTerraces.r16");
 
     let img_dim: usize = 4096;
-    let hex_dim: usize = 120;
+    let hex_dim: usize = 140;
 
     let field = match raw_image_to_normal(input_path, img_dim, img_dim) {
         Ok(image) => image,
@@ -147,7 +150,7 @@ fn main() {
         y: hex_dim as f64 / 2.0,
     };
 
-    let origin = Point { x: 0.0, y: 0.0 };
+    let origin = Point { x: size.x, y: 0_f64};
     let layout = Layout::new(size, origin);
 
     let start_time = std::time::Instant::now();
