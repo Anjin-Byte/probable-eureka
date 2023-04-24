@@ -135,7 +135,7 @@ fn main() {
     let input_path = Path::new("in/FractalTerraces.r16");
 
     let img_dim: usize = 4096;
-    let hex_dim: usize = 140;
+    let hex_dim: usize = 15;
 
     let field = match raw_image_to_normal(input_path, img_dim, img_dim) {
         Ok(image) => image,
