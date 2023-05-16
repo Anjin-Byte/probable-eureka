@@ -1,6 +1,7 @@
-use std::cmp::{Eq, Ord, PartialEq, PartialOrd};
+use std::cmp::{Eq, Ord, PartialEq, PartialOrd, Ordering};
 use std::convert::From;
 use std::ops::{Add, Div, Mul, Rem, Sub};
+use std::hash::{Hash, Hasher};
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct Point {
@@ -81,6 +82,7 @@ pub struct Orientation {
 }
 const SQRT_3: f64 = 1.73205080756888;
 
+#[allow(dead_code)]
 const POINTY: Orientation = Orientation {
     f0: SQRT_3,
     f1: SQRT_3 / 2.0,
@@ -93,7 +95,6 @@ const POINTY: Orientation = Orientation {
     start_angle: 0.5,
 };
 
-#[allow(dead_code)]
 const FLAT: Orientation = Orientation {
     f0: 3.0 / 2.0,
     f1: 0.0,
@@ -110,7 +111,7 @@ const FLAT: Orientation = Orientation {
 pub struct Layout {
     orientation: Orientation,
     pub size: Point,
-    origin: Point,
+    pub origin: Point,
 }
 
 impl Layout {
@@ -182,6 +183,16 @@ impl Hex {
         let q = o.b0 * p.x + o.b1 * p.y;
         let r = o.b2 * p.x + o.b3 * p.y;
 
+        /*
+        let s = -q - r;
+        let a = (q - r).ceil();
+        let b = (r - s).ceil();
+        let c = (s - q).ceil();
+
+        let q = ((a - c) / 3.0).round() as i32;
+        let r = ((b - a) / 3.0).round() as i32; 
+        */
+
         FractionalHex::new(q, r)
     }
 
@@ -191,22 +202,43 @@ impl Hex {
     }
 }
 
+impl From<Point> for Hex {
+    fn from(p: Point) -> Self {
+        const SQRT_3: f64 = 1.73205080756888;
+
+        //let x = p.x * 1_f64/SQRT_3;
+        //let y = p.y * -1_f64/SQRT_3;
+        let x = p.x;
+        let y = p.y;
+
+        let t = SQRT_3 * y + 1_f64;
+        let temp1 = (t + x).floor();
+        let temp2 = t - x;
+        let temp3 = 2_f64 * x + 1_f64;
+
+        let q = ((temp1 + temp3) / 3.0).floor() as i32;
+        let r = ((temp1 + temp2) / 3.0).floor() as i32;
+
+        Self::new(q, r)       
+    }
+}
+
 impl From<FractionalHex> for Hex {
     fn from(h: FractionalHex) -> Self {
-        let q = h.q.round() as i32;
-        let r = h.r.round() as i32;
-        let s = h.s.round() as i32;
+        let q = h.q.round();
+        let r = h.r.round();
+        let s = h.s.round();
 
-        let q_diff = (q as f64 - h.q).abs();
-        let r_diff = (r as f64 - h.r).abs();
-        let s_diff = (s as f64 - h.s).abs();
+        let q_diff = (q - h.q).abs();
+        let r_diff = (r - h.r).abs();
+        let s_diff = (s - h.s).abs();
 
         if q_diff > r_diff && q_diff > s_diff {
-            Self::new(-r - s, r)
+            Self::new((-r -s) as i32, r as i32)
         } else if r_diff > s_diff {
-            Self::new(q, -q - s)
+            Self::new(q as i32, (-q - s) as i32)
         } else {
-            Self::new(q, r)
+            Self::new(q as i32, r as i32)
         }
     }
 }
@@ -235,6 +267,40 @@ impl FractionalHex {
     pub fn new(q: f64, r: f64) -> Self {
         let s = -q - r;
         Self { q, r, s }
+    }
+
+    pub fn round(&self) -> Hex {
+        let mut qi = self.q.round() as i32;
+        let mut ri = self.r.round() as i32;
+        let mut si = self.s.round() as i32;
+
+        let q_diff = (qi as f64 - self.q).abs();
+        let r_diff = (ri as f64 - self.r).abs();
+        let s_diff = (si as f64 - self.s).abs();
+
+        if q_diff > r_diff && q_diff > s_diff {
+            qi = -ri - si;
+        } else if r_diff > s_diff {
+            ri = -qi - si;
+        } else {
+            si = -qi - ri;
+        }
+
+        Hex { q: qi, r: ri, s: si }
+    }
+}
+
+impl Eq for FractionalHex {}
+
+impl Ord for FractionalHex {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.round().cmp(&other.round())
+    }
+}
+
+impl Hash for FractionalHex {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.round().hash(state)
     }
 }
 
