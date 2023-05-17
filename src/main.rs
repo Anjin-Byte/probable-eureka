@@ -58,10 +58,10 @@ impl Basket {
 }
 
 impl Field {
-    pub fn new(size: usize) -> Self {
+    pub fn new(s: usize) -> Self {
         Self {
-            normal: vec![vec![0.0; size]; size],
-            size,
+            normal: vec![vec![0.0; s]; s],
+            size: s,
         }
     }
     
@@ -79,7 +79,7 @@ impl Field {
         for y in 0..size {
             for x in 0..size {
                 let pixel_value = cursor.read_f32::<LittleEndian>()?;
-                normal[y][x] = pixel_value;
+                normal[x][y] = pixel_value;
             }
         }
     
@@ -209,14 +209,70 @@ impl Field {
             size: self.size
         })
     }
+
+    pub fn steepness(&self) -> Result<Self, Box<dyn std::error::Error>> {
+        let s = self.size;
+
+        let mut shifted = vec![vec![0.0; s]; s];
+        for (i, row) in self.normal.iter().enumerate() {
+            shifted[i][1..].copy_from_slice(&row[..s - 1]);
+        }
+
+        let mut rolled = vec![vec![0.0; s]; s];
+        for i in 0..s {
+            rolled[(i + 1) % s].copy_from_slice(&self.normal[i]);
+        }
+    
+        let mut result = vec![vec![0.0; s]; s];
+        for i in 0..s {
+            for j in 0..s {
+                let dx = shifted[i][j] - self.normal[i][j];
+                let dy = rolled[i][j] - self.normal[i][j];
+                result[i][j] = (dx * dx + dy * dy).sqrt();
+            }
+        }
+    
+        Ok(Self {
+            normal: result,
+            size: s,
+        })
+    }
+}
+
+fn write_wrapper(f: &Field, p: &Path) {
+    if let Err(e) = f.write_raw_f32(
+        &Path::new("out").join(p.with_extension("r32"))
+    ) {
+        println!("Error saving r32 image: {}", e);
+    } else {
+        println!("r32 saved successfully...");
+    }
+
+    if let Err(e) = f.write_png_u16(
+        &Path::new("out").join(p.with_extension("png"))
+    ) {
+        println!("Error saving png image: {}", e);
+    } else {
+        println!("png saved successfully...");
+    }
+}
+
+fn stem_builder<'a>(p: &Path, postfix: &str) -> String {
+    let stem = p.file_stem()
+            .expect("file has no stem")
+            .to_string_lossy();
+    let result = format!("{}_{}", stem, postfix);
+    result
 }
 
 fn main() {
-    let input_path = Path::new("in/FractalTerraces.tif");
+    let start_time = std::time::Instant::now();
+    let input_path = Path::new("repo/r32_4k/Wizard.r32");
 
-    let img_dim: usize = 2 << 12;
-    let hex_dim: usize = img_dim / (2 << 5);
+    let img_dim: usize = 2 << 11;
+    let hex_dim: usize = img_dim / (2 << 6);
     println!("img: {} | hex: {}", img_dim, hex_dim);
+
     let field = match Field::from_raw_f32(input_path, img_dim) {
         Ok(image) => image,
         Err(e) => {
@@ -224,6 +280,7 @@ fn main() {
             return;
         }
     };
+    println!("read disc time: {:?}", start_time.elapsed());
     
     let size = Point {
         x: hex_dim as f64 / 2.0,
@@ -233,7 +290,10 @@ fn main() {
     let origin = Point { x: size.x, y: 0_f64};
     let layout = Layout::new(size, origin);
 
-    let start_time = std::time::Instant::now();
+    
+
+
+
     let hex_field = match field.hex_kernel(layout) {
         Ok(image) => image,
         Err(e) => {
@@ -241,31 +301,24 @@ fn main() {
             return;
         }
     };
-    println!("kernel time: {:?}", start_time.elapsed());
+    println!("hex kernel time: {:?}", start_time.elapsed());
+    let output_name = stem_builder(input_path, "hex");
+    write_wrapper(&hex_field, &Path::new(&output_name));
+    println!("write time: {:?}", start_time.elapsed());
 
-    if let Err(e) = hex_field.write_raw_f32(
-        &Path::new("out").join(
-        input_path
-            .strip_prefix("in")
-            .expect("hacky solution failed")
-            .with_extension("r32")
-        )
-    ) {
-        println!("Error saving image: {}", e);
-    } else {
-        println!("r32 saved successfully.");
-    }
 
-    if let Err(e) = hex_field.write_png_u16(
-        &Path::new("out").join(
-        input_path
-            .strip_prefix("in")
-            .expect("hacky solution failed")
-            .with_extension("png")
-        )
-    ) {
-        println!("Error saving image: {}", e);
-    } else {
-        println!("png saved successfully.");
-    }
+
+
+
+    let steepness_field = match field.steepness() {
+        Ok(image) => image,
+        Err(e) => {
+            println!("steepness kernel error: {}", e);
+            return;
+        }
+    };
+    println!("steepness kernel time: {:?}", start_time.elapsed());
+    let output_name = stem_builder(input_path, "steepness");
+    write_wrapper(&steepness_field, &Path::new(&output_name));
+    println!("write time: {:?}", start_time.elapsed());
 }
