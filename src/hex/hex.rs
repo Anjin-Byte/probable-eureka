@@ -1,163 +1,11 @@
-use std::cmp::{Eq, Ord, PartialEq, PartialOrd, Ordering};
-use std::convert::From;
-use std::ops::{Add, Div, Mul, Rem, Sub};
+use crate::hex::layout::{Layout, Direction};
+use crate::hex::point::Point;
+
+use std::borrow::Borrow;
 use std::hash::{Hash, Hasher};
+use std::cmp::Ordering;
+use std::ops;
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-pub struct Point {
-    pub x: f64,
-    pub y: f64,
-}
-
-impl Point {
-    #[allow(dead_code)]
-    pub fn from_hex(layout: &Layout, hex: &Hex) -> Self {
-        let o = &layout.orientation;
-
-        let x = (o.f0 * hex.q as f64 + o.f1 * hex.r as f64) * layout.size.x;
-        let y = (o.f2 * hex.q as f64 + o.f3 * hex.r as f64) * layout.size.y;
-
-        Self {
-            x: x + layout.origin.x,
-            y: y + layout.origin.y,
-        }
-    }
-}
-
-impl Add for Point {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            x: self.x + rhs.x,
-            y: self.y + rhs.y,
-        }
-    }
-}
-
-impl Mul<f64> for Point {
-    type Output = Point;
-
-    fn mul(self, rhs: f64) -> Self::Output {
-        Self {
-            x: self.x * rhs,
-            y: self.y * rhs,
-        }
-    }
-}
-
-impl Div for Point {
-    type Output = Point;
-
-    fn div(self, rhs: Self) -> Self::Output {
-        Self {
-            x: self.x / rhs.x,
-            y: self.y + rhs.y,
-        }
-    }
-}
-
-impl Div<f64> for Point {
-    type Output = Point;
-
-    fn div(self, rhs: f64) -> Self::Output {
-        Self {
-            x: self.x / rhs,
-            y: self.y / rhs,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-pub struct Orientation {
-    pub f0: f64,
-    pub f1: f64,
-    pub f2: f64,
-    pub f3: f64,
-    pub b0: f64,
-    pub b1: f64,
-    pub b2: f64,
-    pub b3: f64,
-    pub start_angle: f64,
-}
-const SQRT_3: f64 = 1.73205080756888;
-
-#[allow(dead_code)]
-const POINTY: Orientation = Orientation {
-    f0: SQRT_3,
-    f1: SQRT_3 / 2.0,
-    f2: 0.0,
-    f3: 3.0 / 2.0,
-    b0: SQRT_3 / 3.0,
-    b1: -1.0 / 3.0,
-    b2: 0.0,
-    b3: 2.0 / 3.0,
-    start_angle: 0.5,
-};
-
-const FLAT: Orientation = Orientation {
-    f0: 3.0 / 2.0,
-    f1: 0.0,
-    f2: SQRT_3 / 2.0,
-    f3: SQRT_3,
-    b0: 2.0 / 3.0,
-    b1: 0.0,
-    b2: -1.0 / 3.0,
-    b3: SQRT_3 / 3.0,
-    start_angle: 0.0,
-};
-
-#[derive(Debug)]
-pub struct Layout {
-    orientation: Orientation,
-    pub size: Point,
-    pub origin: Point,
-}
-
-impl Layout {
-    pub fn new(size: Point, origin: Point) -> Self {
-        Self {
-            orientation: FLAT,
-            size,
-            origin,
-        }
-    }
-
-    #[allow(dead_code)]
-    fn hex_corner_offset(&self, i: u8) -> Point {
-        let angle = 2.0 * std::f64::consts::PI * (self.orientation.start_angle - i as f64) / 6.0;
-        Point {
-            x: self.size.x * angle.cos(),
-            y: self.size.y * angle.sin(),
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn polygon_corners(&self, hex: &Hex) -> Vec<Point> {
-        let mut corners: Vec<Point> = Vec::new();
-        let center = Point::from_hex(&self, &hex);
-
-        for i in 0..6 {
-            let offset = self.hex_corner_offset(i);
-            corners.push(Point {
-                x: center.x + offset.x,
-                y: center.y + offset.y,
-            })
-        }
-
-        corners
-    }
-}
-
-#[allow(dead_code)]
-pub enum Direction {
-    North,
-    NorthEast,
-    SouthEast,
-    South,
-    SouthWest,
-    NorthWest,
-}
 
 #[derive(Hash, Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Hex {
@@ -304,7 +152,7 @@ impl Hash for FractionalHex {
     }
 }
 
-impl Add for Hex {
+impl ops::Add for Hex {
     type Output = Hex;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -312,7 +160,7 @@ impl Add for Hex {
     }
 }
 
-impl Sub for Hex {
+impl ops::Sub for Hex {
     type Output = Hex;
 
     fn sub(self, rhs: Self) -> Self::Output {
@@ -320,7 +168,7 @@ impl Sub for Hex {
     }
 }
 
-impl Mul for Hex {
+impl ops::Mul for Hex {
     type Output = Hex;
 
     fn mul(self, rhs: Self) -> Self::Output {
@@ -328,7 +176,7 @@ impl Mul for Hex {
     }
 }
 
-impl Mul<i32> for Hex {
+impl ops::Mul<i32> for Hex {
     type Output = Hex;
 
     fn mul(self, rhs: i32) -> Self::Output {
@@ -336,7 +184,7 @@ impl Mul<i32> for Hex {
     }
 }
 
-impl Div for Hex {
+impl ops::Div for Hex {
     type Output = FractionalHex;
 
     fn div(self, rhs: Self) -> Self::Output {
@@ -344,7 +192,7 @@ impl Div for Hex {
     }
 }
 
-impl Div<f64> for Hex {
+impl ops::Div<f64> for Hex {
     type Output = FractionalHex;
 
     fn div(self, rhs: f64) -> Self::Output {
@@ -352,10 +200,27 @@ impl Div<f64> for Hex {
     }
 }
 
-impl Rem for Hex {
+impl ops::Rem for Hex {
     type Output = FractionalHex;
 
     fn rem(self, rhs: Self) -> Self::Output {
         Self::Output::new((self.q % rhs.q) as f64, (self.r % rhs.r) as f64)
+    }
+}
+
+
+
+
+
+
+
+// Implement Borrow<FractionalHex> for Hex
+impl Borrow<FractionalHex> for Hex {
+    fn borrow(&self) -> &FractionalHex {
+        // Unsafe block is required to create a reference from a Hex to a FractionalHex
+        // This assumes that FractionalHex has a similar layout to Hex
+        // If they don't, this code will cause undefined behavior.
+        // You should provide a better implementation if they differ in memory layout.
+        unsafe { &*(self as *const Hex as *const FractionalHex) }
     }
 }
