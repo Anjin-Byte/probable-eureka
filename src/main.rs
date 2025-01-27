@@ -1,16 +1,18 @@
-pub mod hex;
 pub mod field;
+pub mod hex;
+pub mod frontend;
+
+use field::field::Field;
+use hex::{layout::Layout, point::Point};
+//use frontend::app::App;
 
 extern crate image;
 
 use std::path::Path;
 
-use field::field::Field;
-use hex::{layout::Layout, point::Point};
-
-
 //#[allow(dead_code)]
-/* fn raw_image_to_normal(
+/*
+fn raw_image_to_normal(
     file_path: &Path,
     width: usize,
     height: usize,
@@ -32,65 +34,165 @@ use hex::{layout::Layout, point::Point};
     }
 
     Ok(normal_image)
-} */
-
-fn write_wrapper(f: &Field, p: &Path) {
-/*     if let Err(e) = f.write_raw_f32(
-        &Path::new("out").join(p.with_extension("r32"))
-    ) {
-        println!("Error saving r32 image: {}", e);
-    } else {
-        println!("r32 saved successfully...");
-    }
-
-    if let Err(e) = f.write_png_u16(
-        &Path::new("out").join(p.with_extension("png"))
-    ) {
-        println!("Error saving png image: {}", e);
-    } else {
-        println!("png saved successfully...");
-    } */
 }
+*/
 
 fn stem_builder<'a>(p: &Path, postfix: &str) -> String {
-    let stem = p.file_stem()
-            .expect("file has no stem")
-            .to_string_lossy();
+    let stem = p.file_stem().expect("file has no stem").to_string_lossy();
     let result = format!("{}_{}", stem, postfix);
     result
 }
 
 fn main() {
     //let start_time = std::time::Instant::now();
-    let input_path = Path::new("repo/Combine.r32");
+    let input_path = Path::new("repo/arid_demo_8k/FractalTerraces.r32");
 
-    let img_dim: usize = 2 << 12;
-    let hex_dim: usize = img_dim / (2 << 2);
-
+    let img_dim: usize = 8192;
+    let hex_dim: usize = img_dim / 288;
     let field = Field::from_r32(input_path).expect("failed to read in r32");
+
+    /*
+    let _ = eframe::run_native(
+        "Image Viewer",
+        eframe::NativeOptions::default(),
+        Box::new(|cc| {
+            let mut app = App::new(img_dim);
+            app.update_image(&cc.egui_ctx, &field);
+            Ok(Box::new(app))
+        }),
+    );
+    */
 
     let size = Point {
         x: hex_dim as f64 / 2.0,
         y: hex_dim as f64 / 2.0,
     };
 
-    let origin = Point { x: size.x, y: 0_f64};
+    let origin = Point {
+        x: size.x,
+        y: 0_f64,
+    };
+
     let layout = Layout::new(size, origin);
-    
-    let hex_field = field.steepness().expect("hex kernel failed");
-    //dbg!(&hex_field.flattened_field);
-    let binding = stem_builder(input_path, "hex");
+
+    let binding = stem_builder(input_path, "original");
     let output_path = Path::new(&binding);
 
-    if let Err(e) = hex_field.write_png_u16(
-        &Path::new("out").join(output_path.with_extension("png"))
-    ) {
-        println!("Error saving r32 image: {}", e);
+    if let Err(e) =
+        field.write_png_u16(&Path::new("out").join(output_path.with_extension("png")))
+    {
+        println!("Error saving original image: {}", e);
     } else {
-        println!("r32 saved successfully...");
+        println!(" saved original successfully...");
     }
 
-/*     println!("img: {} | hex: {}", img_dim, hex_dim);
+        
+    let hex_field = field.hex_aggregate(layout).expect("hex kernel failed");
+    let binding = stem_builder(input_path, "hex");
+    let output_path = Path::new(&binding);
+    
+    if let Err(e) =
+        hex_field.write_png_u16(&Path::new("out").join(output_path.with_extension("png")))
+    {
+        println!("Error saving  image: {}", e);
+    } else {
+        println!(" saved hex successfully...");
+    }
+
+
+    let steepness_field = field.steepness().expect("steepness kernel failed");
+    let binding = stem_builder(input_path, "steepness");
+    let output_path = Path::new(&binding);
+    
+    if let Err(e) =
+        steepness_field.write_png_u16(&Path::new("out").join(output_path.with_extension("png")))
+    {
+        println!("Error saving  image: {}", e);
+    } else {
+        println!(" saved steepness successfully...");
+    }
+
+
+    let prewitt = field.prewitt().expect("steepness kernel failed");
+    let binding = stem_builder(input_path, "prewitt");
+    let output_path = Path::new(&binding);
+
+    if let Err(e) =
+        prewitt.write_png_u16(&Path::new("out").join(output_path.with_extension("png")))
+    {
+        println!("Error saving steepness image: {}", e);
+    } else {
+        println!(" saved prewitt successfully...");
+    }
+
+
+    let sobel = hex_field.sobel().expect("sobel kernel failed");
+    let binding = stem_builder(input_path, "sobel");
+    let output_path = Path::new(&binding);
+
+    if let Err(e) =
+        sobel.write_png_u16(&Path::new("out").join(output_path.with_extension("png")))
+    {
+        println!("Error saving prewitt image: {}", e);
+    } else {
+        println!(" saved sobel successfully...");
+    }
+
+    let sobel = field.sobel().expect("sobel kernel failed");
+
+    let binding = stem_builder(input_path, "sobel");
+    let output_path = Path::new(&binding);
+    if let Err(e) =
+        sobel.write_png_u16(&Path::new("out").join(output_path.with_extension("png")))
+    {
+        println!("Error saving prewitt image: {}", e);
+    } else {
+        println!(" saved sobel successfully...");
+    }
+
+    let structural = field.structural_lines().expect("sobel kernel failed");
+
+    let binding = stem_builder(input_path, "crests");
+    let output_path = Path::new(&binding);
+    if let Err(e) =
+        structural.0.write_png_u16(&Path::new("out").join(output_path.with_extension("png")))
+    {
+        println!("Error saving prewitt image: {}", e);
+    } else {
+        println!(" saved crests successfully...");
+    }
+
+    let binding = stem_builder(input_path, "thalwegs");
+    let output_path = Path::new(&binding);
+    if let Err(e) =
+        structural.1.write_png_u16(&Path::new("out").join(output_path.with_extension("png")))
+    {
+        println!("Error saving prewitt image: {}", e);
+    } else {
+        println!(" saved thalwegs successfully...");
+    }
+
+    let binding = stem_builder(input_path, "convex_lines");
+    let output_path = Path::new(&binding);
+    if let Err(e) =
+        structural.2.write_png_u16(&Path::new("out").join(output_path.with_extension("png")))
+    {
+        println!("Error saving prewitt image: {}", e);
+    } else {
+        println!(" saved convex_lines successfully...");
+    }
+
+    let binding = stem_builder(input_path, "concave_lines");
+    let output_path = Path::new(&binding);
+    if let Err(e) =
+        structural.3.write_png_u16(&Path::new("out").join(output_path.with_extension("png")))
+    {
+        println!("Error saving prewitt image: {}", e);
+    } else {
+        println!(" saved concave_lines successfully...");
+    }
+    /*
+    println!("img: {} | hex: {}", img_dim, hex_dim);
 
     let field = match Field::from_raw_f32(input_path, img_dim) {
         Ok(image) => image,
@@ -100,7 +202,7 @@ fn main() {
         }
     };
     println!("read disc time: {:?}", start_time.elapsed());
-    
+
     let size = Point {
         x: hex_dim as f64 / 2.0,
         y: hex_dim as f64 / 2.0,
@@ -108,10 +210,6 @@ fn main() {
 
     let origin = Point { x: size.x, y: 0_f64};
     let layout = Layout::new(size, origin);
-
-    
-
-
 
     let hex_field = match field.hex_kernel(layout) {
         Ok(image) => image,
@@ -125,10 +223,6 @@ fn main() {
     write_wrapper(&hex_field, &Path::new(&output_name));
     println!("write time: {:?}", start_time.elapsed());
 
-
-
-
-
     let steepness_field = match field.steepness() {
         Ok(image) => image,
         Err(e) => {
@@ -139,5 +233,6 @@ fn main() {
     println!("steepness kernel time: {:?}", start_time.elapsed());
     let output_name = stem_builder(input_path, "steepness");
     write_wrapper(&steepness_field, &Path::new(&output_name));
-    println!("write time: {:?}", start_time.elapsed()); */
+    println!("write time: {:?}", start_time.elapsed());
+    */
 }
