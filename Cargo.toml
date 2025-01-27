@@ -7,8 +7,10 @@ edition = "2021"
 
 [dependencies]
 image = "*"
-png = "*"
 byteorder = "*"
+hashbrown = "0.14.5"
+rayon = "1.10.0"
+eframe = "0.30.0"
 
 [profile.release]
 lto = true
