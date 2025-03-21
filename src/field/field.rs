@@ -78,7 +78,7 @@ impl Field {
 
     pub fn to_resized_rgba_image(&self, max_size: u32) -> Vec<u8> {
         //let original_size = (self.width as u32, self.width as u32);
-        
+
         let mut image = RgbaImage::new(self.width as u32, self.width as u32);
         self.flattened_field
             .iter()
@@ -190,8 +190,8 @@ impl Field {
     }
 
     /// # Args desc bc i'll forget lol
-    /// * `dx` - Horizontal shift (positive is right, negative is left).
-    /// * `dy` - Vertical shift (positive is down, negative is up).
+    /// * `dx` - horizontal shift (positive is right, negative is left)
+    /// * `dy` - vertical shift (positive is down, negative is up)
     fn shift(field: &[f32], width: usize, dx: isize, dy: isize) -> Vec<f32> {
         let height = field.len() / width;
         let mut shifted = vec![0.0; field.len()];
@@ -208,7 +208,7 @@ impl Field {
                 let new_idx = (new_row as usize) * width + (new_col as usize);
                 shifted[i] = field[new_idx];
             } else {
-                // Retain the original value at the boundary
+                // retain the original value at the boundary
                 shifted[i] = field[i];
             }
         }
@@ -217,16 +217,16 @@ impl Field {
     }
 
     pub fn sobel(&self) -> Result<Self, Box<dyn std::error::Error>> {
-        let top_left        = Self::shift(&self.flattened_field, IMG_WIDTH, -1, -1);
-        let top             = Self::shift(&self.flattened_field, IMG_WIDTH, 0, -1);
-        let top_right       = Self::shift(&self.flattened_field, IMG_WIDTH, 1, -1);
+        let top_left =      Self::shift(&self.flattened_field, IMG_WIDTH, -1, -1);
+        let top =           Self::shift(&self.flattened_field, IMG_WIDTH, 0, -1);
+        let top_right =     Self::shift(&self.flattened_field, IMG_WIDTH, 1, -1);
 
-        let left            = Self::shift(&self.flattened_field, IMG_WIDTH, -1, 0);
-        let right           = Self::shift(&self.flattened_field, IMG_WIDTH, 1, 0);
+        let left =          Self::shift(&self.flattened_field, IMG_WIDTH, -1, 0);
+        let right =         Self::shift(&self.flattened_field, IMG_WIDTH, 1, 0);
 
-        let bottom_left     = Self::shift(&self.flattened_field, IMG_WIDTH, -1, 1);
-        let bottom          = Self::shift(&self.flattened_field, IMG_WIDTH, 0, 1);
-        let bottom_right    = Self::shift(&self.flattened_field, IMG_WIDTH, 1, 1);
+        let bottom_left =   Self::shift(&self.flattened_field, IMG_WIDTH, -1, 1);
+        let bottom =        Self::shift(&self.flattened_field, IMG_WIDTH, 0, 1);
+        let bottom_right =  Self::shift(&self.flattened_field, IMG_WIDTH, 1, 1);
 
         let mut gradient_x = vec![0.0; ARRAY_LEN];
         let mut gradient_y = vec![0.0; ARRAY_LEN];
@@ -265,16 +265,16 @@ impl Field {
     }
 
     pub fn prewitt(&self) -> Result<Self, Box<dyn std::error::Error>> {
-        let top_left        = Self::shift(&self.flattened_field, IMG_WIDTH, -1, -1);
-        let top             = Self::shift(&self.flattened_field, IMG_WIDTH, 0, -1);
-        let top_right       = Self::shift(&self.flattened_field, IMG_WIDTH, 1, -1);
+        let top_left =      Self::shift(&self.flattened_field, IMG_WIDTH, -1, -1);
+        let top =           Self::shift(&self.flattened_field, IMG_WIDTH, 0, -1);
+        let top_right =     Self::shift(&self.flattened_field, IMG_WIDTH, 1, -1);
 
-        let left            = Self::shift(&self.flattened_field, IMG_WIDTH, -1, 0);
-        let right           = Self::shift(&self.flattened_field, IMG_WIDTH, 1, 0);
+        let left =          Self::shift(&self.flattened_field, IMG_WIDTH, -1, 0);
+        let right =         Self::shift(&self.flattened_field, IMG_WIDTH, 1, 0);
 
-        let bottom_left     = Self::shift(&self.flattened_field, IMG_WIDTH, -1, 1);
-        let bottom          = Self::shift(&self.flattened_field, IMG_WIDTH, 0, 1);
-        let bottom_right    = Self::shift(&self.flattened_field, IMG_WIDTH, 1, 1);
+        let bottom_left =   Self::shift(&self.flattened_field, IMG_WIDTH, -1, 1);
+        let bottom =        Self::shift(&self.flattened_field, IMG_WIDTH, 0, 1);
+        let bottom_right =  Self::shift(&self.flattened_field, IMG_WIDTH, 1, 1);
 
         let mut gradient_x = vec![0.0; ARRAY_LEN];
         let mut gradient_y = vec![0.0; ARRAY_LEN];
@@ -312,8 +312,8 @@ impl Field {
     }
 
     pub fn steepness(&self) -> Result<Self, Box<dyn std::error::Error>> {
-        let shifted_right   = Self::shift(&self.flattened_field, IMG_WIDTH, 1, 0);
-        let shifted_down    = Self::shift(&self.flattened_field, IMG_WIDTH, 0, 1);
+        let shifted_right =     Self::shift(&self.flattened_field, IMG_WIDTH, 1, 0);
+        let shifted_down =      Self::shift(&self.flattened_field, IMG_WIDTH, 0, 1);
 
         let mut result = vec![0.0; ARRAY_LEN];
         let mut min = f32::MAX;
@@ -353,7 +353,11 @@ impl Field {
         (lambda1, lambda2)
     }
 
-    pub fn normalize(&self, new_min: f32, new_max: f32) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn normalize(
+        &self,
+        new_min: f32,
+        new_max: f32,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         let mut min = f32::MAX;
         let mut max = f32::MIN;
 
@@ -379,7 +383,7 @@ impl Field {
             flattened_field: normalized_field.into_boxed_slice(),
             width: self.width,
         })
-        }
+    }
 
     pub fn structural_lines(&self) -> Result<(Self, Self, Self, Self), Box<dyn std::error::Error>> {
         let gradient_x = Self::shift(&self.flattened_field, self.width, 1, 0)
@@ -412,10 +416,10 @@ impl Field {
             .map(|(a, b)| a - b)
             .collect::<Vec<f32>>();
 
-        let mut crests = vec![0.0; self.flattened_field.len()];
-        let mut thalwegs = vec![0.0; self.flattened_field.len()];
-        let mut convex_lines = vec![0.0; self.flattened_field.len()];
-        let mut concave_lines = vec![0.0; self.flattened_field.len()];
+        let mut crests =            vec![0.0; self.flattened_field.len()];
+        let mut thalwegs =          vec![0.0; self.flattened_field.len()];
+        let mut convex_lines =      vec![0.0; self.flattened_field.len()];
+        let mut concave_lines =     vec![0.0; self.flattened_field.len()];
 
         for i in 0..self.flattened_field.len() {
             let hessian = [[dxx[i], dxy[i]], [dxy[i], dyy[i]]];
@@ -438,19 +442,27 @@ impl Field {
             Self {
                 flattened_field: crests.into_boxed_slice(),
                 width: self.width,
-            }.normalize(0.0, 1.0).expect("Failed to normalize crests field"),
+            }
+            .normalize(0.0, 1.0)
+            .expect("Failed to normalize crests field"),
             Self {
                 flattened_field: thalwegs.into_boxed_slice(),
                 width: self.width,
-            }.normalize(0.0, 1.0).expect("Failed to normalize thalwegs field"),
+            }
+            .normalize(0.0, 1.0)
+            .expect("Failed to normalize thalwegs field"),
             Self {
                 flattened_field: convex_lines.into_boxed_slice(),
                 width: self.width,
-            }.normalize(0.0, 1.0).expect("Failed to normalize convex_lines field"),
+            }
+            .normalize(0.0, 1.0)
+            .expect("Failed to normalize convex_lines field"),
             Self {
                 flattened_field: concave_lines.into_boxed_slice(),
                 width: self.width,
-            }.normalize(0.0, 1.0).expect("Failed to normalize concave_lines field"),
+            }
+            .normalize(0.0, 1.0)
+            .expect("Failed to normalize concave_lines field"),
         ))
     }
 }
