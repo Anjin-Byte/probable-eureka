@@ -78,8 +78,7 @@ impl Field {
 
     pub fn to_resized_rgba_image(&self, max_size: u32) -> Vec<u8> {
         //let original_size = (self.width as u32, self.width as u32);
-
-        // Create an `RgbaImage` from the flattened field data
+        
         let mut image = RgbaImage::new(self.width as u32, self.width as u32);
         self.flattened_field
             .iter()
@@ -91,7 +90,6 @@ impl Field {
                 image.put_pixel(x, y, image::Rgba([normalized, normalized, normalized, 255]));
             });
 
-        // Resize the image to fit within `max_size`
         let resized_image = DynamicImage::ImageRgba8(image)
             .resize(max_size, max_size, image::imageops::FilterType::Nearest)
             .to_rgba8();
@@ -102,7 +100,6 @@ impl Field {
     pub fn write_png_u16(&self, path: &Path) -> Result<(), ImageError> {
         assert_eq!(ARRAY_LEN, IMG_WIDTH * IMG_WIDTH, "Image is not square!");
 
-        // Compute min and max to normalize the field
         let (min, max) = self
             .flattened_field
             .iter()
@@ -116,12 +113,9 @@ impl Field {
             1.0 // Avoid division by zero; treat as uniform field
         };
 
-        // Create the image buffer
         let img = ImageBuffer::from_fn(IMG_WIDTH as u32, IMG_WIDTH as u32, |x, y| {
             let value = self.flattened_field[(y as usize * IMG_WIDTH) + x as usize];
-            // Normalize to [0.0, 1.0]
             let normalized_value = (value - min) / range;
-            // Scale to u16 range
             let u16_value = (normalized_value * u16::MAX as f32) as u16;
             Luma::<u16>([u16_value])
         });
@@ -195,7 +189,7 @@ impl Field {
         })
     }
 
-    /// # Arguments
+    /// # Args desc bc i'll forget lol
     /// * `dx` - Horizontal shift (positive is right, negative is left).
     /// * `dy` - Vertical shift (positive is down, negative is up).
     fn shift(field: &[f32], width: usize, dx: isize, dy: isize) -> Vec<f32> {
@@ -206,7 +200,6 @@ impl Field {
             let row = i / width;
             let col = i % width;
 
-            // Calculate new coordinates after the shift
             let new_row = row as isize + dy;
             let new_col = col as isize + dx;
 
@@ -360,23 +353,19 @@ impl Field {
         (lambda1, lambda2)
     }
 
-    /// Normalize the field values to a specified range [new_min, new_max].
     pub fn normalize(&self, new_min: f32, new_max: f32) -> Result<Self, Box<dyn std::error::Error>> {
         let mut min = f32::MAX;
         let mut max = f32::MIN;
 
-        // Calculate the current min and max values
         for &value in self.flattened_field.iter() {
             min = min.min(value);
             max = max.max(value);
         }
 
         if max - min < std::f32::EPSILON {
-            // Handle edge case: all values are identical
             return Err("Normalization failed: All values in the field are identical.".into());
         }
 
-        // Compute the normalization factor
         let range = max - min;
         let new_range = new_max - new_min;
 
@@ -393,7 +382,6 @@ impl Field {
         }
 
     pub fn structural_lines(&self) -> Result<(Self, Self, Self, Self), Box<dyn std::error::Error>> {
-        // Step 1: Compute the gradient
         let gradient_x = Self::shift(&self.flattened_field, self.width, 1, 0)
             .iter()
             .zip(self.flattened_field.iter())
@@ -406,7 +394,6 @@ impl Field {
             .map(|(a, b)| a - b)
             .collect::<Vec<f32>>();
 
-        // Step 2: Compute second-order derivatives (Hessian components)
         let dxx = Self::shift(&gradient_x, self.width, 1, 0)
             .iter()
             .zip(gradient_x.iter())
@@ -425,7 +412,6 @@ impl Field {
             .map(|(a, b)| a - b)
             .collect::<Vec<f32>>();
 
-        // Step 3: Compute principal curvatures and directions
         let mut crests = vec![0.0; self.flattened_field.len()];
         let mut thalwegs = vec![0.0; self.flattened_field.len()];
         let mut convex_lines = vec![0.0; self.flattened_field.len()];
@@ -435,7 +421,6 @@ impl Field {
             let hessian = [[dxx[i], dxy[i]], [dxy[i], dyy[i]]];
             let (lambda1, lambda2) = Self::compute_eigenvalues(hessian);
 
-            // Curvature logic
             if lambda1 > 0.0 {
                 crests[i] = lambda1;
             } else if lambda1 < 0.0 {
@@ -449,7 +434,6 @@ impl Field {
             }
         }
 
-        // Normalize results for visualization
         Ok((
             Self {
                 flattened_field: crests.into_boxed_slice(),

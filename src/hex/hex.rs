@@ -208,19 +208,12 @@ impl ops::Rem for Hex {
     }
 }
 
-
-
-
-
-
-
-// Implement Borrow<FractionalHex> for Hex
 impl Borrow<FractionalHex> for Hex {
     fn borrow(&self) -> &FractionalHex {
         // Unsafe block is required to create a reference from a Hex to a FractionalHex
         // This assumes that FractionalHex has a similar layout to Hex
-        // If they don't, this code will cause undefined behavior.
-        // You should provide a better implementation if they differ in memory layout.
+        // if they don't, this code will cause undefined behavior.
+        // should provide a better implementation if differ in memory layout.
         unsafe { &*(self as *const Hex as *const FractionalHex) }
     }
 }
